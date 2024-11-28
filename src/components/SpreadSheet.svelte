@@ -3,18 +3,30 @@
     import Cell from "./Cell.svelte";
     import HeaderCell from "./HeaderCell.svelte";
     import HeaderRow from "./HeaderRow.svelte";
+    import { autoScroll } from "../utils/autoScroll";
+    import { PerformanceMetrics } from "../utils/performanceMetrics";
 
-    const TOTAL_ROWS = 1000000;
-    const TOTAL_COLS = 1000000;
+    const TOTAL_ROWS = 16384;
+    const TOTAL_COLS = 1048576;
     const VISIBLE_ROWS = 50;
     const VISIBLE_COLS = 26;
     const ROW_HEIGHT = 32;
     const COL_WIDTH = 100;
-    const BUFFER_SIZE = 5;
+    const BUFFER_SIZE = 25;
 
     let startRow = 0;
     let startCol = 0;
     let scrollTimeout;
+    let spreadsheetElement;
+    let isScrolling = false;
+    let isTracking = false;
+
+    function startAutoScroll() {
+        if (isScrolling) return;
+
+        isScrolling = true;
+        autoScroll(spreadsheetElement);
+    }
 
     function debouncedScroll(event) {
         if (scrollTimeout) {
@@ -62,9 +74,34 @@
         { length: Math.min(VISIBLE_COLS, TOTAL_COLS - startCol) },
         (_, i) => startCol + i,
     );
+
+    function startPerformanceTest() {
+        if (isTracking) return;
+
+        isTracking = true;
+        isScrolling = true;
+
+        // 성능 측정 시작
+        PerformanceMetrics.startTracking();
+
+        // 자동 스크롤 시작
+        autoScroll(spreadsheetElement);
+
+        // 60초 후 테스트 종료
+        setTimeout(() => {
+            isTracking = false;
+            isScrolling = false;
+            const report = PerformanceMetrics.generateReport();
+            console.log("성능 테스트 완료:", report);
+        }, 60000);
+    }
 </script>
 
-<div class="spreadsheet" on:scroll={debouncedScroll}>
+<div
+    class="spreadsheet"
+    on:scroll={debouncedScroll}
+    bind:this={spreadsheetElement}
+>
     <div class="header-row">
         <div class="corner-cell"></div>
         <div
@@ -95,6 +132,16 @@
             </div>
         {/each}
     </div>
+</div>
+
+<div class="controls">
+    <button
+        class="test-button"
+        on:click={startPerformanceTest}
+        disabled={isTracking}
+    >
+        {isTracking ? "성능 테스트 진행 중..." : "60초 성능 테스트 시작"}
+    </button>
 </div>
 
 <style>
@@ -153,5 +200,35 @@
         position: sticky;
         left: 0;
         z-index: 3;
+    }
+
+    .controls {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+        z-index: 1000;
+    }
+
+    .test-button {
+        padding: 12px 24px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.3s;
+    }
+
+    .test-button:hover {
+        background-color: #45a049;
+    }
+
+    .test-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
     }
 </style>

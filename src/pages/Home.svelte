@@ -1,5 +1,11 @@
 <script>
+    import { onMount } from "svelte";
     import SpreadSheet from "../components/SpreadSheet.svelte";
+    import { spreadsheetStore } from "../stores/spreadSheet";
+
+    onMount(() => {
+        spreadsheetStore.initializeDummyData();
+    });
 </script>
 
 <main>

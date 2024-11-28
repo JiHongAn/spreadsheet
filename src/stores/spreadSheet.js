@@ -113,6 +113,55 @@ function createSpreadsheetStore() {
                 references: {},
                 version: 0
             });
+        },
+
+        async initializeDummyData(totalRows = 1000000) {
+            const CHUNK_SIZE = 10000;
+            let processedRows = 0;
+            const startTime = performance.now();
+
+            console.log('더미데이터 생성 시작...');
+
+            // 초기값 A1 설정
+            update(store => {
+                store.formulas['A1'] = '1';
+                store.version++;
+                return store;
+            });
+
+            while (processedRows < totalRows) {
+                const chunkSize = Math.min(CHUNK_SIZE, totalRows - processedRows);
+
+                await new Promise(resolve => {
+                    update(store => {
+                        const chunkStartTime = performance.now();
+
+                        for (let i = 0; i < chunkSize; i++) {
+                            const currentRow = processedRows + i + 1;
+                            if (currentRow > 1) {
+                                store.formulas[`A${currentRow}`] = `=A${currentRow - 1}+1`;
+                            }
+                            store.formulas[`B${currentRow}`] = `=A${currentRow}+1`;
+                        }
+                        store.version++;
+
+                        const chunkEndTime = performance.now();
+
+                        return store;
+                    });
+
+                    setTimeout(resolve, 0);
+                });
+
+                processedRows += chunkSize;
+                console.log(`${processedRows.toLocaleString()}개 생성 완료...`);
+            }
+
+            const endTime = performance.now();
+            const totalTime = endTime - startTime;
+
+            console.log('더미데이터 생성 완료!');
+            console.log(`총 소요 시간: ${(totalTime / 1000).toFixed(2)}초`);
         }
     };
 }
